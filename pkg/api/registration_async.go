@@ -103,6 +103,16 @@ func (r RegistrationReqBuilder) AddStringLabel(key string, value string) Registr
 	return r.addLabel(key, Value_String, valueMarshalled)
 }
 
+func (r RegistrationReqBuilder) AddCapabilities(capabilities ...string) RegistrationReqBuilder {
+	r.req.Capabilities = append(r.req.Capabilities, capabilities...)
+	return r
+}
+
+func (r RegistrationReqBuilder) SetOsStatus(osStatus *OsStatus) RegistrationReqBuilder {
+	r.req.OsStatus = osStatus
+	return r
+}
+
 func (r RegistrationReqBuilder) addLabel(key string, valueType Value_ValueTYpe, valueMarshalled []byte) RegistrationReqBuilder {
 	label := &Label{
 		Key: key,
