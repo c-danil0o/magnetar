@@ -28,3 +28,17 @@ func RegistrationRespFromDomain(resp domain.RegistrationResp) (*api.Registration
 		NodeId: resp.NodeId,
 	}, nil
 }
+
+func NodeUpdateReqToDomain(req *api.NodeUpdateReq) (*domain.NodeUpdateReq, error) {
+	return &domain.NodeUpdateReq{
+		NodeId: domain.NodeId{
+			Value: req.NodeId,
+		},
+		Capabilities: req.Capabilities,
+		OsStatus:     OsStatusToDomain(req.OsStatus),
+	}, nil
+}
+
+func NodeUpdateRespFromDomain(resp domain.NodeUpdateResp) (*api.NodeUpdateResp, error) {
+	return &api.NodeUpdateResp{}, nil
+}

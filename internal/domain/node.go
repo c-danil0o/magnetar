@@ -32,6 +32,7 @@ type Selector struct {
 type NodeRepo interface {
 	Put(node Node) error
 	Get(nodeId NodeId, org string) (*Node, error)
+	FindById(nodeId NodeId) (*Node, error)
 	Delete(node Node) error
 	ListNodePool() ([]Node, error)
 	ListOrgOwnedNodes(org string) ([]Node, error)

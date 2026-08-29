@@ -31,16 +31,19 @@ type app struct {
 	grpcServer                *grpc.Server
 	magnetarServer            api.MagnetarServer
 	registrationServer        *servers.RegistrationAsyncServer
+	nodeUpdateServer          *servers.NodeUpdateAsyncServer
 	nodeService               *services.NodeService
 	labelService              *services.LabelService
 	authzService              services.AuthZService
 	registrationService       *services.RegistrationService
+	nodeUpdateService         *services.NodeUpdateService
 	evaluatorClient           oortapi.OortEvaluatorClient
 	administratorClient       *oortapi.AdministrationAsyncClient
 	meridian                  meridian_api.MeridianClient
 	gravity                   gravity_api.AgentQueueClient
 	publisher                 messaging.Publisher
 	registrationSubscriber    messaging.Subscriber
+	nodeUpdateSubscriber      messaging.Subscriber
 	nodeRepo                  domain.NodeRepo
 	nodeMarshaller            domain.NodeMarshaller
 	labelMarshaller           domain.LabelMarshaller
@@ -63,6 +66,10 @@ func (a *app) Start() error {
 	a.init()
 
 	err := a.startRegistrationServer()
+	if err != nil {
+		return err
+	}
+	err = a.startNodeUpdateServer()
 	if err != nil {
 		return err
 	}
@@ -121,6 +128,7 @@ func (a *app) init() {
 
 	a.initNatsPublisher(natsConn)
 	a.initRegistrationNatsSubscriber(natsConn)
+	a.initNodeUpdateNatsSubscriber(natsConn)
 
 	a.initNodeProtoMarshaller()
 	a.initLabelProtoMarshaller()
@@ -135,8 +143,10 @@ func (a *app) init() {
 	a.initNodeService()
 	a.initLabelService()
 	a.initRegistrationService()
+	a.initNodeUpdateService()
 
 	a.initRegistrationServer()
+	a.initNodeUpdateServer()
 	a.initMagnetarServer()
 	a.initGrpcServer()
 }
@@ -191,6 +201,34 @@ func (a *app) initRegistrationService() {
 		log.Fatalln(err)
 	}
 	a.registrationService = registrationService
+}
+
+func (a *app) initNodeUpdateService() {
+	if a.nodeRepo == nil {
+		log.Fatalln("node repo is nil")
+	}
+	nodeUpdateService, err := services.NewNodeUpdateService(a.nodeRepo)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	a.nodeUpdateService = nodeUpdateService
+}
+
+func (a *app) initNodeUpdateServer() {
+	if a.nodeUpdateService == nil {
+		log.Fatalln("node update service is nil")
+	}
+	if a.publisher == nil {
+		log.Fatalln("publisher is nil")
+	}
+	if a.nodeUpdateSubscriber == nil {
+		log.Fatalln("node update subscriber is nil")
+	}
+	server, err := servers.NewNodeUpdateAsyncServer(a.nodeUpdateSubscriber, a.publisher, *a.nodeUpdateService)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	a.nodeUpdateServer = server
 }
 
 func (a *app) initNodeService() {
@@ -274,6 +312,14 @@ func (a *app) initRegistrationNatsSubscriber(conn *natsgo.Conn) {
 	a.registrationSubscriber = registrationSubscriber
 }
 
+func (a *app) initNodeUpdateNatsSubscriber(conn *natsgo.Conn) {
+	nodeUpdateSubscriber, err := nats.NewSubscriber(conn, api.NodeUpdateSubject, "magnetar")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	a.nodeUpdateSubscriber = nodeUpdateSubscriber
+}
+
 func (a *app) initNodeEtcdRepo(client *etcd.Client) {
 	nodeRepo, err := repos.NewNodeEtcdRepo(client, a.nodeMarshaller, a.labelMarshaller)
 	if err != nil {
@@ -298,6 +344,19 @@ func (a *app) startRegistrationServer() error {
 	a.gracefulShutdownProcesses = append(a.gracefulShutdownProcesses, func(wg *sync.WaitGroup) {
 		a.registrationServer.GracefulStop()
 		log.Println("registration server gracefully stopped")
+		wg.Done()
+	})
+	return nil
+}
+
+func (a *app) startNodeUpdateServer() error {
+	err := a.nodeUpdateServer.Serve()
+	if err != nil {
+		return err
+	}
+	a.gracefulShutdownProcesses = append(a.gracefulShutdownProcesses, func(wg *sync.WaitGroup) {
+		a.nodeUpdateServer.GracefulStop()
+		log.Println("node update server gracefully stopped")
 		wg.Done()
 	})
 	return nil

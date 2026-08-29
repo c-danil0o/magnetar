@@ -16,3 +16,12 @@ message RegistrationReq {
 message RegistrationResp {
   string NodeId = 1;
 }
+
+message NodeUpdateReq {
+  string nodeId = 1;
+  repeated string capabilities = 2;
+  OsStatus osStatus = 3;
+}
+
+message NodeUpdateResp {
+}

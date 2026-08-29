@@ -63,6 +63,34 @@ func (n nodeEtcdRepo) Get(nodeId domain.NodeId, org string) (*domain.Node, error
 	return n.nodeMarshaller.Unmarshal(resp.Kvs[0].Value)
 }
 
+func (n nodeEtcdRepo) FindById(nodeId domain.NodeId) (*domain.Node, error) {
+	node, err := n.Get(nodeId, "")
+	if err == nil {
+		return node, nil
+	}
+	return n.findInOrgs(nodeId)
+}
+
+func (n nodeEtcdRepo) findInOrgs(nodeId domain.NodeId) (*domain.Node, error) {
+	prefix := fmt.Sprintf("%s/orgs/", getKeyPrefix)
+	resp, err := n.etcd.Get(context.TODO(), prefix, etcd.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	suffix := fmt.Sprintf("/%s", nodeId.Value)
+	for _, kv := range resp.Kvs {
+		if !strings.HasSuffix(string(kv.Key), suffix) {
+			continue
+		}
+		node, err := n.nodeMarshaller.Unmarshal(kv.Value)
+		if err != nil {
+			return nil, err
+		}
+		return node, nil
+	}
+	return nil, errors.New("node not found")
+}
+
 func (n nodeEtcdRepo) ListNodePool() ([]domain.Node, error) {
 	keyPrefix := fmt.Sprintf("%s/pool", getKeyPrefix)
 	return n.listNodes(keyPrefix)
