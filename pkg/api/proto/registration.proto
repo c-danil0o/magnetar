@@ -9,6 +9,8 @@ message RegistrationReq {
   repeated Label labels = 1;
   map<string, double> resources = 2;
   string bindAddress = 3;
+  repeated string capabilities = 4;
+  OsStatus osStatus = 5;
 }
 
 message RegistrationResp {

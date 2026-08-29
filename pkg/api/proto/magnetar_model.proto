@@ -9,6 +9,47 @@ message Node {
   repeated Label labels = 3;
   map<string, double> resources = 4;
   string bindAddress = 5;
+  repeated string capabilities = 6;
+  OsStatus osStatus = 7;
+  DesiredOsImage desiredOsImage = 8;
+  repeated DesiredVm desiredVms = 9;
+  repeated VmStatus vmStatus = 10;
+}
+
+message OsStatus {
+  string bootedImage = 1;
+  string bootedDigest = 2;
+  string bootedVersion = 3;
+  string phase = 4;
+  OsAttempt lastAttempt = 5;
+}
+
+message OsAttempt {
+  string image = 1;
+  string digest = 2;
+  string result = 3;
+  int64 timestamp = 4;
+}
+
+message DesiredOsImage {
+  string imageRef = 1;
+  string digest = 2;
+  string rebootPolicy = 3;
+}
+
+message DesiredVm {
+  string name = 1;
+  string qcow2Url = 2;
+  string digest = 3;
+  uint32 vcpus = 4;
+  uint32 memoryMb = 5;
+  repeated Label labels = 6;
+}
+
+message VmStatus {
+  string name = 1;
+  string state = 2;
+  string bootedOs = 3;
 }
 
 message Label {
