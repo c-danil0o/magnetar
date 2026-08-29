@@ -20,9 +20,11 @@ func (r *RegistrationService) Register(req domain.RegistrationReq) (*domain.Regi
 		Id: domain.NodeId{
 			Value: generateNodeId(),
 		},
-		Labels:    req.Labels,
-		Resources: req.Resources,
-		BindAddress: req.BindAddress,
+		Labels:       req.Labels,
+		Resources:    req.Resources,
+		BindAddress:  req.BindAddress,
+		Capabilities: req.Capabilities,
+		OsStatus:     req.OsStatus,
 	}
 
 	err := r.nodeRepo.Put(node)

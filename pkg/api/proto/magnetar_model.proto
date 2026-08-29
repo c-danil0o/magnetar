@@ -99,6 +99,8 @@ message NodeStringified {
   string org = 2;
   repeated LabelStringified labels = 3;
   map<string, double> resources = 4;
+  repeated string capabilities = 5;
+  OsStatus osStatus = 6;
 }
 
 message LabelStringified {
