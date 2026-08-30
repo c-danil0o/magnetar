@@ -22,8 +22,14 @@ func (s *NodeUpdateService) Update(req domain.NodeUpdateReq) (*domain.NodeUpdate
 		log.Printf("node update skipped, node %s not found", req.NodeId.Value)
 		return &domain.NodeUpdateResp{}, nil
 	}
-	node.Capabilities = req.Capabilities
-	node.OsStatus = req.OsStatus
+	// only overwrite fields the reporter actually sent: a nil field means
+	// "unchanged", otherwise every status tick would clobber capabilities
+	if req.Capabilities != nil {
+		node.Capabilities = req.Capabilities
+	}
+	if req.OsStatus != nil {
+		node.OsStatus = req.OsStatus
+	}
 	err = s.nodeRepo.Put(*node)
 	if err != nil {
 		return nil, err
