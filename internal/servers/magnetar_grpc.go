@@ -19,12 +19,14 @@ type MagnetarGrpcServer struct {
 	api.UnimplementedMagnetarServer
 	nodeService  services.NodeService
 	labelService services.LabelService
+	vmService    services.VmService
 }
 
-func NewMagnetarGrpcServer(nodeService services.NodeService, labelService services.LabelService) (api.MagnetarServer, error) {
+func NewMagnetarGrpcServer(nodeService services.NodeService, labelService services.LabelService, vmService services.VmService) (api.MagnetarServer, error) {
 	return &MagnetarGrpcServer{
 		nodeService:  nodeService,
 		labelService: labelService,
+		vmService:    vmService,
 	}, nil
 }
 
@@ -207,6 +209,54 @@ func (m *MagnetarGrpcServer) ListAllNodes(ctx context.Context, req *api.ListAllN
 		return nil, err
 	}
 	return proto.ListAlldNodesRespFromDomain(nodes)
+}
+
+func (m *MagnetarGrpcServer) SetDesiredVms(ctx context.Context, req *api.VmDesiredSetReq) (*api.VmDesiredSetResp, error) {
+	hostId, vms, err := proto.VmDesiredSetReqToDomain(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	stored, err := m.vmService.SetDesiredVms(hostId, vms)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, err
+	}
+	return proto.VmDesiredSetRespFromDomain(stored), nil
+}
+
+func (m *MagnetarGrpcServer) GetDesiredVms(ctx context.Context, req *api.VmDesiredGetReq) (*api.VmDesiredGetResp, error) {
+	vms, err := m.vmService.GetDesiredVms(proto.VmDesiredGetReqToDomain(req))
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, err
+	}
+	return proto.VmDesiredGetRespFromDomain(vms), nil
+}
+
+func (m *MagnetarGrpcServer) GetVmStatuses(ctx context.Context, req *api.VmStatusGetReq) (*api.VmStatusGetResp, error) {
+	statuses, err := m.vmService.GetVmStatuses(proto.VmStatusGetReqToDomain(req))
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, err
+	}
+	return proto.VmStatusGetRespFromDomain(statuses), nil
+}
+
+func (m *MagnetarGrpcServer) SetVmStatuses(ctx context.Context, req *api.VmStatusSetReq) (*api.VmStatusSetResp, error) {
+	hostId, statuses := proto.VmStatusSetReqToDomain(req)
+	if err := m.vmService.SetVmStatuses(hostId, statuses); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, err
+	}
+	return &api.VmStatusSetResp{}, nil
 }
 
 func GetAuthInterceptor() func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {

@@ -279,3 +279,55 @@ func VmStatusToDomain(vm *api.VmStatus) *domain.VmStatus {
 		BootedOs: vm.BootedOs,
 	}
 }
+
+func VmDesiredGetReqToDomain(req *api.VmDesiredGetReq) domain.NodeId {
+	return domain.NodeId{Value: req.HostId}
+}
+
+func VmDesiredSetReqToDomain(req *api.VmDesiredSetReq) (domain.NodeId, []domain.DesiredVm, error) {
+	vms := make([]domain.DesiredVm, len(req.Vms))
+	for i, protoVm := range req.Vms {
+		vm, err := DesiredVmToDomain(protoVm)
+		if err != nil {
+			return domain.NodeId{}, nil, err
+		}
+		vms[i] = *vm
+	}
+	return domain.NodeId{Value: req.HostId}, vms, nil
+}
+
+func VmStatusGetReqToDomain(req *api.VmStatusGetReq) domain.NodeId {
+	return domain.NodeId{Value: req.HostId}
+}
+
+func VmStatusSetReqToDomain(req *api.VmStatusSetReq) (domain.NodeId, []domain.VmStatus) {
+	statuses := make([]domain.VmStatus, len(req.Statuses))
+	for i, protoStatus := range req.Statuses {
+		statuses[i] = *VmStatusToDomain(protoStatus)
+	}
+	return domain.NodeId{Value: req.HostId}, statuses
+}
+
+func VmDesiredGetRespFromDomain(vms []domain.DesiredVm) *api.VmDesiredGetResp {
+	protoVms := make([]*api.DesiredVm, len(vms))
+	for i, vm := range vms {
+		protoVms[i] = DesiredVmFromDomain(vm)
+	}
+	return &api.VmDesiredGetResp{Vms: protoVms}
+}
+
+func VmDesiredSetRespFromDomain(vms []domain.DesiredVm) *api.VmDesiredSetResp {
+	protoVms := make([]*api.DesiredVm, len(vms))
+	for i, vm := range vms {
+		protoVms[i] = DesiredVmFromDomain(vm)
+	}
+	return &api.VmDesiredSetResp{Vms: protoVms}
+}
+
+func VmStatusGetRespFromDomain(statuses []domain.VmStatus) *api.VmStatusGetResp {
+	protoStatuses := make([]*api.VmStatus, len(statuses))
+	for i, status := range statuses {
+		protoStatuses[i] = VmStatusFromDomain(status)
+	}
+	return &api.VmStatusGetResp{Statuses: protoStatuses}
+}

@@ -34,6 +34,10 @@ type MagnetarClient interface {
 	PutStringLabel(ctx context.Context, in *PutStringLabelReq, opts ...grpc.CallOption) (*PutLabelResp, error)
 	DeleteLabel(ctx context.Context, in *DeleteLabelReq, opts ...grpc.CallOption) (*DeleteLabelResp, error)
 	ListAllNodes(ctx context.Context, in *ListAllNodesReq, opts ...grpc.CallOption) (*ListAllNodesResp, error)
+	SetDesiredVms(ctx context.Context, in *VmDesiredSetReq, opts ...grpc.CallOption) (*VmDesiredSetResp, error)
+	GetDesiredVms(ctx context.Context, in *VmDesiredGetReq, opts ...grpc.CallOption) (*VmDesiredGetResp, error)
+	GetVmStatuses(ctx context.Context, in *VmStatusGetReq, opts ...grpc.CallOption) (*VmStatusGetResp, error)
+	SetVmStatuses(ctx context.Context, in *VmStatusSetReq, opts ...grpc.CallOption) (*VmStatusSetResp, error)
 }
 
 type magnetarClient struct {
@@ -152,6 +156,42 @@ func (c *magnetarClient) ListAllNodes(ctx context.Context, in *ListAllNodesReq, 
 	return out, nil
 }
 
+func (c *magnetarClient) SetDesiredVms(ctx context.Context, in *VmDesiredSetReq, opts ...grpc.CallOption) (*VmDesiredSetResp, error) {
+	out := new(VmDesiredSetResp)
+	err := c.cc.Invoke(ctx, "/proto.Magnetar/SetDesiredVms", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *magnetarClient) GetDesiredVms(ctx context.Context, in *VmDesiredGetReq, opts ...grpc.CallOption) (*VmDesiredGetResp, error) {
+	out := new(VmDesiredGetResp)
+	err := c.cc.Invoke(ctx, "/proto.Magnetar/GetDesiredVms", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *magnetarClient) GetVmStatuses(ctx context.Context, in *VmStatusGetReq, opts ...grpc.CallOption) (*VmStatusGetResp, error) {
+	out := new(VmStatusGetResp)
+	err := c.cc.Invoke(ctx, "/proto.Magnetar/GetVmStatuses", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *magnetarClient) SetVmStatuses(ctx context.Context, in *VmStatusSetReq, opts ...grpc.CallOption) (*VmStatusSetResp, error) {
+	out := new(VmStatusSetResp)
+	err := c.cc.Invoke(ctx, "/proto.Magnetar/SetVmStatuses", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MagnetarServer is the server API for Magnetar service.
 // All implementations must embed UnimplementedMagnetarServer
 // for forward compatibility
@@ -168,6 +208,10 @@ type MagnetarServer interface {
 	PutStringLabel(context.Context, *PutStringLabelReq) (*PutLabelResp, error)
 	DeleteLabel(context.Context, *DeleteLabelReq) (*DeleteLabelResp, error)
 	ListAllNodes(context.Context, *ListAllNodesReq) (*ListAllNodesResp, error)
+	SetDesiredVms(context.Context, *VmDesiredSetReq) (*VmDesiredSetResp, error)
+	GetDesiredVms(context.Context, *VmDesiredGetReq) (*VmDesiredGetResp, error)
+	GetVmStatuses(context.Context, *VmStatusGetReq) (*VmStatusGetResp, error)
+	SetVmStatuses(context.Context, *VmStatusSetReq) (*VmStatusSetResp, error)
 	mustEmbedUnimplementedMagnetarServer()
 }
 
@@ -210,6 +254,18 @@ func (UnimplementedMagnetarServer) DeleteLabel(context.Context, *DeleteLabelReq)
 }
 func (UnimplementedMagnetarServer) ListAllNodes(context.Context, *ListAllNodesReq) (*ListAllNodesResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAllNodes not implemented")
+}
+func (UnimplementedMagnetarServer) SetDesiredVms(context.Context, *VmDesiredSetReq) (*VmDesiredSetResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetDesiredVms not implemented")
+}
+func (UnimplementedMagnetarServer) GetDesiredVms(context.Context, *VmDesiredGetReq) (*VmDesiredGetResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDesiredVms not implemented")
+}
+func (UnimplementedMagnetarServer) GetVmStatuses(context.Context, *VmStatusGetReq) (*VmStatusGetResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVmStatuses not implemented")
+}
+func (UnimplementedMagnetarServer) SetVmStatuses(context.Context, *VmStatusSetReq) (*VmStatusSetResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetVmStatuses not implemented")
 }
 func (UnimplementedMagnetarServer) mustEmbedUnimplementedMagnetarServer() {}
 
@@ -440,6 +496,78 @@ func _Magnetar_ListAllNodes_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Magnetar_SetDesiredVms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VmDesiredSetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MagnetarServer).SetDesiredVms(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Magnetar/SetDesiredVms",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MagnetarServer).SetDesiredVms(ctx, req.(*VmDesiredSetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Magnetar_GetDesiredVms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VmDesiredGetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MagnetarServer).GetDesiredVms(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Magnetar/GetDesiredVms",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MagnetarServer).GetDesiredVms(ctx, req.(*VmDesiredGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Magnetar_GetVmStatuses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VmStatusGetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MagnetarServer).GetVmStatuses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Magnetar/GetVmStatuses",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MagnetarServer).GetVmStatuses(ctx, req.(*VmStatusGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Magnetar_SetVmStatuses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VmStatusSetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MagnetarServer).SetVmStatuses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Magnetar/SetVmStatuses",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MagnetarServer).SetVmStatuses(ctx, req.(*VmStatusSetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Magnetar_ServiceDesc is the grpc.ServiceDesc for Magnetar service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -494,6 +622,22 @@ var Magnetar_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAllNodes",
 			Handler:    _Magnetar_ListAllNodes_Handler,
+		},
+		{
+			MethodName: "SetDesiredVms",
+			Handler:    _Magnetar_SetDesiredVms_Handler,
+		},
+		{
+			MethodName: "GetDesiredVms",
+			Handler:    _Magnetar_GetDesiredVms_Handler,
+		},
+		{
+			MethodName: "GetVmStatuses",
+			Handler:    _Magnetar_GetVmStatuses_Handler,
+		},
+		{
+			MethodName: "SetVmStatuses",
+			Handler:    _Magnetar_SetVmStatuses_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

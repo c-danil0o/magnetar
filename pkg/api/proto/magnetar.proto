@@ -18,6 +18,10 @@ service Magnetar {
   rpc PutStringLabel(PutStringLabelReq) returns (PutLabelResp) {}
   rpc DeleteLabel(DeleteLabelReq) returns (DeleteLabelResp) {}
   rpc ListAllNodes(ListAllNodesReq) returns (ListAllNodesResp) {}
+  rpc SetDesiredVms(VmDesiredSetReq) returns (VmDesiredSetResp) {}
+  rpc GetDesiredVms(VmDesiredGetReq) returns (VmDesiredGetResp) {}
+  rpc GetVmStatuses(VmStatusGetReq) returns (VmStatusGetResp) {}
+  rpc SetVmStatuses(VmStatusSetReq) returns (VmStatusSetResp) {}
 }
 
 message GetFromNodePoolReq {
@@ -50,6 +54,42 @@ message ListAllNodesReq { }
 
 message ListAllNodesResp {
   repeated NodeStringified nodes = 1;
+}
+
+// VM management (Phase 4): desired VMs are a standing declaration on the host
+// node record (phase-next.md §2.3 Q1). The CP writes them (gateway/cockpit),
+// the host's Star polls them over NATS and reports observed status back.
+message VmDesiredGetReq {
+  string hostId = 1;
+}
+
+message VmDesiredGetResp {
+  repeated DesiredVm vms = 1;
+}
+
+message VmDesiredSetReq {
+  string hostId = 1;
+  repeated DesiredVm vms = 2;
+}
+
+message VmDesiredSetResp {
+  repeated DesiredVm vms = 1;
+}
+
+message VmStatusGetReq {
+  string hostId = 1;
+}
+
+message VmStatusGetResp {
+  repeated VmStatus statuses = 1;
+}
+
+message VmStatusSetReq {
+  string hostId = 1;
+  repeated VmStatus statuses = 2;
+}
+
+message VmStatusSetResp {
 }
 
 message ListNodePoolReq { }
