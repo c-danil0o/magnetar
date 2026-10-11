@@ -52,3 +52,20 @@ func TestRequestDecodesReply(t *testing.T) {
 		t.Fatal("reply not decoded")
 	}
 }
+
+func TestConnectWithoutBroker(t *testing.T) {
+	// an enrolled node may boot while the control plane is down
+	conn, err := connect("127.0.0.1:1")
+	if err != nil {
+		t.Fatalf("connect must not fail without a broker: %v", err)
+	}
+	defer conn.Close()
+	if conn.IsClosed() {
+		t.Fatal("connection closed instead of retrying")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if err := request(ctx, conn, "x", &DesiredOsImageGetReq{}, &DesiredOsImageGetResp{}); err == nil {
+		t.Fatal("request without a broker must fail")
+	}
+}
