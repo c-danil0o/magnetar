@@ -1,70 +1,32 @@
 package api
 
 import (
-	"fmt"
-	"log"
+	"context"
 
-	"github.com/c12s/magnetar/pkg/messaging"
-	"github.com/c12s/magnetar/pkg/messaging/nats"
 	"github.com/golang/protobuf/proto"
 	natsgo "github.com/nats-io/nats.go"
 )
 
 type RegistrationAsyncClient struct {
-	publisher         messaging.Publisher
-	subscriberFactory func(subject string) messaging.Subscriber
+	conn *natsgo.Conn
 }
 
 func NewRegistrationAsyncClient(natsAddress string) (*RegistrationAsyncClient, error) {
-	conn, err := natsgo.Connect(fmt.Sprintf("nats://%s", natsAddress))
+	conn, err := connect(natsAddress)
 	if err != nil {
 		return nil, err
 	}
-	publisher, err := nats.NewPublisher(conn)
-	if err != nil {
+	return &RegistrationAsyncClient{conn: conn}, nil
+}
+
+// Register enrolls the node and returns the id Magnetar assigned.
+func (n *RegistrationAsyncClient) Register(ctx context.Context, req *RegistrationReq) (*RegistrationResp, error) {
+	resp := &RegistrationResp{}
+	if err := request(ctx, n.conn, RegistrationSubject, req, resp); err != nil {
 		return nil, err
 	}
-	subscriberFactory := func(subject string) messaging.Subscriber {
-		subscriber, _ := nats.NewSubscriber(conn, subject, "")
-		return subscriber
-	}
-	return &RegistrationAsyncClient{
-		publisher:         publisher,
-		subscriberFactory: subscriberFactory,
-	}, nil
+	return resp, nil
 }
-
-func (n *RegistrationAsyncClient) Register(req *RegistrationReq, callback RegistrationCallback) error {
-	reqMarshalled, err := req.Marshal()
-	if err != nil {
-		return err
-	}
-
-	replySubject := n.publisher.GenerateReplySubject()
-	subscriber := n.subscriberFactory(replySubject)
-	err = subscriber.Subscribe(func(msg []byte, _ string) {
-		resp := &RegistrationResp{}
-		err := resp.Unmarshal(msg)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		callback(resp)
-	})
-	if err != nil {
-		return err
-	}
-
-	// send request
-	err = n.publisher.Request(reqMarshalled, RegistrationSubject, replySubject)
-	if err != nil {
-		_ = subscriber.Unsubscribe()
-		return err
-	}
-	return nil
-}
-
-type RegistrationCallback func(resp *RegistrationResp)
 
 type RegistrationReqBuilder struct {
 	req *RegistrationReq
