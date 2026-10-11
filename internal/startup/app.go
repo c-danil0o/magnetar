@@ -182,7 +182,7 @@ func (a *app) initMagnetarServer() {
 	if a.vmService == nil {
 		log.Fatalln("vm service is nil")
 	}
-	magnetarServer, err := servers.NewMagnetarGrpcServer(*a.nodeService, *a.labelService, *a.vmService)
+	magnetarServer, err := servers.NewMagnetarGrpcServer(*a.nodeService, *a.labelService, *a.vmService, a.authzService)
 	if err != nil {
 		log.Fatalln(err)
 	}

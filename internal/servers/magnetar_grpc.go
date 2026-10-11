@@ -20,14 +20,25 @@ type MagnetarGrpcServer struct {
 	nodeService  services.NodeService
 	labelService services.LabelService
 	vmService    services.VmService
+	authorizer   services.AuthZService
 }
 
-func NewMagnetarGrpcServer(nodeService services.NodeService, labelService services.LabelService, vmService services.VmService) (api.MagnetarServer, error) {
+func NewMagnetarGrpcServer(nodeService services.NodeService, labelService services.LabelService, vmService services.VmService, authorizer services.AuthZService) (api.MagnetarServer, error) {
 	return &MagnetarGrpcServer{
 		nodeService:  nodeService,
 		labelService: labelService,
 		vmService:    vmService,
+		authorizer:   authorizer,
 	}, nil
+}
+
+// authorizeHost guards the user-facing VM endpoints; hosts reach the same
+// data over NATS (VmAsyncServer) without a user token.
+func (m *MagnetarGrpcServer) authorizeHost(ctx context.Context, permission, hostId string) error {
+	if !m.authorizer.Authorize(ctx, permission, "node", hostId) {
+		return status.Error(codes.PermissionDenied, domain.ErrForbidden.Error())
+	}
+	return nil
 }
 
 func (m *MagnetarGrpcServer) GetFromNodePool(ctx context.Context, req *api.GetFromNodePoolReq) (*api.GetFromNodePoolResp, error) {
@@ -216,6 +227,9 @@ func (m *MagnetarGrpcServer) SetDesiredVms(ctx context.Context, req *api.VmDesir
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	if err := m.authorizeHost(ctx, "node.put", hostId.Value); err != nil {
+		return nil, err
+	}
 	stored, err := m.vmService.SetDesiredVms(hostId, vms)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -227,6 +241,9 @@ func (m *MagnetarGrpcServer) SetDesiredVms(ctx context.Context, req *api.VmDesir
 }
 
 func (m *MagnetarGrpcServer) GetDesiredVms(ctx context.Context, req *api.VmDesiredGetReq) (*api.VmDesiredGetResp, error) {
+	if err := m.authorizeHost(ctx, "node.get", req.HostId); err != nil {
+		return nil, err
+	}
 	vms, err := m.vmService.GetDesiredVms(proto.VmDesiredGetReqToDomain(req))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -238,6 +255,9 @@ func (m *MagnetarGrpcServer) GetDesiredVms(ctx context.Context, req *api.VmDesir
 }
 
 func (m *MagnetarGrpcServer) GetVmStatuses(ctx context.Context, req *api.VmStatusGetReq) (*api.VmStatusGetResp, error) {
+	if err := m.authorizeHost(ctx, "node.get", req.HostId); err != nil {
+		return nil, err
+	}
 	statuses, err := m.vmService.GetVmStatuses(proto.VmStatusGetReqToDomain(req))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -250,6 +270,9 @@ func (m *MagnetarGrpcServer) GetVmStatuses(ctx context.Context, req *api.VmStatu
 
 func (m *MagnetarGrpcServer) SetVmStatuses(ctx context.Context, req *api.VmStatusSetReq) (*api.VmStatusSetResp, error) {
 	hostId, statuses := proto.VmStatusSetReqToDomain(req)
+	if err := m.authorizeHost(ctx, "node.put", hostId.Value); err != nil {
+		return nil, err
+	}
 	if err := m.vmService.SetVmStatuses(hostId, statuses); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, status.Error(codes.NotFound, err.Error())
