@@ -58,15 +58,15 @@ func (n nodeEtcdRepo) Get(nodeId domain.NodeId, org string) (*domain.Node, error
 		return nil, err
 	}
 	if resp.Count == 0 {
-		return nil, errors.New("node not found")
+		return nil, domain.ErrNodeNotFound
 	}
 	return n.nodeMarshaller.Unmarshal(resp.Kvs[0].Value)
 }
 
 func (n nodeEtcdRepo) FindById(nodeId domain.NodeId) (*domain.Node, error) {
 	node, err := n.Get(nodeId, "")
-	if err == nil {
-		return node, nil
+	if !errors.Is(err, domain.ErrNodeNotFound) {
+		return node, err
 	}
 	return n.findInOrgs(nodeId)
 }
@@ -88,7 +88,7 @@ func (n nodeEtcdRepo) findInOrgs(nodeId domain.NodeId) (*domain.Node, error) {
 		}
 		return node, nil
 	}
-	return nil, errors.New("node not found")
+	return nil, domain.ErrNodeNotFound
 }
 
 func (n nodeEtcdRepo) ListNodePool() ([]domain.Node, error) {

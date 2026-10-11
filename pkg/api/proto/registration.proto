@@ -24,4 +24,9 @@ message NodeUpdateReq {
 }
 
 message NodeUpdateResp {
+  // deprecated: read notFound. Still set for agents built against it.
+  bool found = 1;
+  // false by default, so replies from servers without this field never look
+  // like "unknown node"
+  bool notFound = 2;
 }

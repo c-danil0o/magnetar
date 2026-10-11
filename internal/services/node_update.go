@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"log"
 
 	"github.com/c12s/magnetar/internal/domain"
@@ -18,9 +19,12 @@ func NewNodeUpdateService(nodeRepo domain.NodeRepo) (*NodeUpdateService, error) 
 
 func (s *NodeUpdateService) Update(req domain.NodeUpdateReq) (*domain.NodeUpdateResp, error) {
 	node, err := s.nodeRepo.FindById(req.NodeId)
-	if err != nil {
+	if errors.Is(err, domain.ErrNodeNotFound) {
 		log.Printf("node update skipped, node %s not found", req.NodeId.Value)
-		return &domain.NodeUpdateResp{}, nil
+		return &domain.NodeUpdateResp{NotFound: true}, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	// only overwrite fields the reporter actually sent: a nil field means
 	// "unchanged", otherwise every status tick would clobber capabilities

@@ -40,5 +40,5 @@ func NodeUpdateReqToDomain(req *api.NodeUpdateReq) (*domain.NodeUpdateReq, error
 }
 
 func NodeUpdateRespFromDomain(resp domain.NodeUpdateResp) (*api.NodeUpdateResp, error) {
-	return &api.NodeUpdateResp{}, nil
+	return &api.NodeUpdateResp{Found: !resp.NotFound, NotFound: resp.NotFound}, nil
 }

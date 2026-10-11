@@ -19,4 +19,5 @@ type NodeUpdateReq struct {
 }
 
 type NodeUpdateResp struct {
+	NotFound bool
 }

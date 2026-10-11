@@ -1,5 +1,11 @@
 package domain
 
+import "errors"
+
+// ErrNodeNotFound means the node has no record; any other repo error is a
+// storage failure and must not be treated as "unknown node".
+var ErrNodeNotFound = errors.New("node not found")
+
 type Node struct {
 	Id             NodeId
 	Org            string
