@@ -8,4 +8,5 @@ const (
 	// is how the host reports observed VM status back.
 	VmDesiredGetSubject = "magnetar.vms.desired.get"
 	VmStatusSetSubject  = "magnetar.vms.status.set"
+	OsDesiredGetSubject = "magnetar.os.desired.get"
 )

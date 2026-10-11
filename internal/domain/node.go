@@ -47,6 +47,8 @@ type NodeRepo interface {
 	PutLabel(node Node, label Label) (*Node, error)
 	DeleteLabel(node Node, labelKey string) (*Node, error)
 	ListAllNodes() ([]Node, error)
+	PutDesiredOsImage(nodeId NodeId, image *DesiredOsImage) error
+	GetDesiredOsImage(nodeId NodeId) (*DesiredOsImage, error)
 }
 
 type NodeMarshaller interface {

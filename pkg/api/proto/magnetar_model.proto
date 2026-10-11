@@ -101,6 +101,7 @@ message NodeStringified {
   map<string, double> resources = 4;
   repeated string capabilities = 5;
   OsStatus osStatus = 6;
+  DesiredOsImage desiredOsImage = 7;
 }
 
 message LabelStringified {

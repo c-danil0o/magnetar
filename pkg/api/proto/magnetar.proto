@@ -22,6 +22,7 @@ service Magnetar {
   rpc GetDesiredVms(VmDesiredGetReq) returns (VmDesiredGetResp) {}
   rpc GetVmStatuses(VmStatusGetReq) returns (VmStatusGetResp) {}
   rpc SetVmStatuses(VmStatusSetReq) returns (VmStatusSetResp) {}
+  rpc SetDesiredOsImage(DesiredOsImageSetReq) returns (DesiredOsImageSetResp) {}
 }
 
 message GetFromNodePoolReq {
@@ -159,4 +160,23 @@ message DeleteLabelReq {
 
 message DeleteLabelResp {
   NodeStringified node = 1;
+}
+
+// Operator intent for a node's OS. An absent image clears it.
+message DesiredOsImageSetReq {
+  string nodeId = 1;
+  DesiredOsImage image = 2;
+}
+
+message DesiredOsImageSetResp {}
+
+// Node pull over NATS (magnetar.os.desired.get).
+message DesiredOsImageGetReq {
+  string nodeId = 1;
+}
+
+// image is absent when nothing is declared; notFound when the node is unknown.
+message DesiredOsImageGetResp {
+  DesiredOsImage image = 1;
+  bool notFound = 2;
 }

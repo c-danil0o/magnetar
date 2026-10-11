@@ -20,14 +20,16 @@ type MagnetarGrpcServer struct {
 	nodeService  services.NodeService
 	labelService services.LabelService
 	vmService    services.VmService
+	osService    services.OsService
 	authorizer   services.AuthZService
 }
 
-func NewMagnetarGrpcServer(nodeService services.NodeService, labelService services.LabelService, vmService services.VmService, authorizer services.AuthZService) (api.MagnetarServer, error) {
+func NewMagnetarGrpcServer(nodeService services.NodeService, labelService services.LabelService, vmService services.VmService, osService services.OsService, authorizer services.AuthZService) (api.MagnetarServer, error) {
 	return &MagnetarGrpcServer{
 		nodeService:  nodeService,
 		labelService: labelService,
 		vmService:    vmService,
+		osService:    osService,
 		authorizer:   authorizer,
 	}, nil
 }
@@ -291,4 +293,23 @@ func GetAuthInterceptor() func(ctx context.Context, req interface{}, info *grpc.
 		// Calls the handler
 		return handler(ctx, req)
 	}
+}
+
+// SetDesiredOsImage records the operator's OS intent for a node (called by
+// gravity before it notifies the node). Same permission as the update itself.
+func (m *MagnetarGrpcServer) SetDesiredOsImage(ctx context.Context, req *api.DesiredOsImageSetReq) (*api.DesiredOsImageSetResp, error) {
+	if req.NodeId == "" {
+		return nil, status.Error(codes.InvalidArgument, "nodeId is required")
+	}
+	if err := m.authorizeHost(ctx, "os.update", req.NodeId); err != nil {
+		return nil, err
+	}
+	err := m.osService.SetDesiredOsImage(domain.NodeId{Value: req.NodeId}, proto.DesiredOsImageToDomain(req.Image))
+	if errors.Is(err, domain.ErrNodeNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &api.DesiredOsImageSetResp{}, nil
 }

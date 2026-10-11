@@ -33,6 +33,9 @@ type app struct {
 	registrationServer        *servers.RegistrationAsyncServer
 	nodeUpdateServer          *servers.NodeUpdateAsyncServer
 	vmAsyncServer             *servers.VmAsyncServer
+	osAsyncServer             *servers.OsAsyncServer
+	osService                 *services.OsService
+	osDesiredGetSubscriber    messaging.Subscriber
 	nodeService               *services.NodeService
 	labelService              *services.LabelService
 	vmService                 *services.VmService
@@ -78,6 +81,10 @@ func (a *app) Start() error {
 		return err
 	}
 	err = a.startVmAsyncServer()
+	if err != nil {
+		return err
+	}
+	err = a.startOsAsyncServer()
 	if err != nil {
 		return err
 	}
@@ -152,12 +159,14 @@ func (a *app) init() {
 	a.initNodeService()
 	a.initLabelService()
 	a.initVmService()
+	a.initOsService()
 	a.initRegistrationService()
 	a.initNodeUpdateService()
 
 	a.initRegistrationServer()
 	a.initNodeUpdateServer()
 	a.initVmAsyncServer()
+	a.initOsAsyncServer()
 	a.initMagnetarServer()
 	a.initGrpcServer()
 }
@@ -182,7 +191,7 @@ func (a *app) initMagnetarServer() {
 	if a.vmService == nil {
 		log.Fatalln("vm service is nil")
 	}
-	magnetarServer, err := servers.NewMagnetarGrpcServer(*a.nodeService, *a.labelService, *a.vmService, a.authzService)
+	magnetarServer, err := servers.NewMagnetarGrpcServer(*a.nodeService, *a.labelService, *a.vmService, *a.osService, a.authzService)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -237,6 +246,34 @@ func (a *app) initVmService() {
 		log.Fatalln(err)
 	}
 	a.vmService = vmService
+}
+
+func (a *app) initOsService() {
+	osService, err := services.NewOsService(a.nodeRepo)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	a.osService = osService
+}
+
+func (a *app) initOsAsyncServer() {
+	server, err := servers.NewOsAsyncServer(a.osDesiredGetSubscriber, a.publisher, *a.osService)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	a.osAsyncServer = server
+}
+
+func (a *app) startOsAsyncServer() error {
+	if err := a.osAsyncServer.Serve(); err != nil {
+		return err
+	}
+	a.gracefulShutdownProcesses = append(a.gracefulShutdownProcesses, func(wg *sync.WaitGroup) {
+		a.osAsyncServer.GracefulStop()
+		log.Println("os async server gracefully stopped")
+		wg.Done()
+	})
+	return nil
 }
 
 func (a *app) initVmAsyncServer() {
@@ -377,6 +414,12 @@ func (a *app) initVmNatsSubscribers(conn *natsgo.Conn) {
 		log.Fatalln(err)
 	}
 	a.vmStatusSetSubscriber = statusSetSubscriber
+
+	osDesiredGetSubscriber, err := nats.NewSubscriber(conn, api.OsDesiredGetSubject, "magnetar")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	a.osDesiredGetSubscriber = osDesiredGetSubscriber
 }
 
 func (a *app) initNodeEtcdRepo(client *etcd.Client) {

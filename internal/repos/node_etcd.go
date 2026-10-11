@@ -2,6 +2,7 @@ package repos
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -20,6 +21,10 @@ import (
 // for query operations
 // key - labels/pool/{labelKey}/{nodeId} | labels/orgs/{orgId}/{labelKey}/{nodeId}
 // value - protobuf label (key + value)
+// desired OS image (own key: status reports rewrite the node record, a
+// read-modify-write there would race with and drop operator intent)
+// key - desired_os/{nodeId}
+// value - json DesiredOsImage
 
 type nodeEtcdRepo struct {
 	etcd            *etcd.Client
@@ -36,6 +41,7 @@ func NewNodeEtcdRepo(etcd *etcd.Client, nodeMarshaller domain.NodeMarshaller, la
 }
 
 func (n nodeEtcdRepo) Put(node domain.Node) error {
+	node.DesiredOsImage = nil // stored under its own key, see PutDesiredOsImage
 	err := n.putNodeGetModel(node)
 	if err != nil {
 		return err
@@ -60,7 +66,11 @@ func (n nodeEtcdRepo) Get(nodeId domain.NodeId, org string) (*domain.Node, error
 	if resp.Count == 0 {
 		return nil, domain.ErrNodeNotFound
 	}
-	return n.nodeMarshaller.Unmarshal(resp.Kvs[0].Value)
+	node, err := n.nodeMarshaller.Unmarshal(resp.Kvs[0].Value)
+	if err != nil {
+		return nil, err
+	}
+	return n.withDesiredOs(node)
 }
 
 func (n nodeEtcdRepo) FindById(nodeId domain.NodeId) (*domain.Node, error) {
@@ -86,7 +96,7 @@ func (n nodeEtcdRepo) findInOrgs(nodeId domain.NodeId) (*domain.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return node, nil
+		return n.withDesiredOs(node)
 	}
 	return nil, domain.ErrNodeNotFound
 }
@@ -153,14 +163,79 @@ func (n nodeEtcdRepo) listNodes(keyPrefix string) ([]domain.Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	desired, err := n.allDesiredOs()
+	if err != nil {
+		return nil, err
+	}
 	for _, kv := range resp.Kvs {
 		node, err := n.nodeMarshaller.Unmarshal(kv.Value)
 		if err != nil {
 			return nil, err
 		}
+		node.DesiredOsImage = desired[node.Id.Value]
 		nodes = append(nodes, *node)
 	}
 	return nodes, nil
+}
+
+// PutDesiredOsImage records the OS image the operator declared for a node;
+// nil clears it.
+func (n nodeEtcdRepo) PutDesiredOsImage(nodeId domain.NodeId, image *domain.DesiredOsImage) error {
+	key := desiredOsKey(nodeId)
+	if image == nil {
+		_, err := n.etcd.Delete(context.TODO(), key)
+		return err
+	}
+	value, err := json.Marshal(image)
+	if err != nil {
+		return err
+	}
+	_, err = n.etcd.Put(context.TODO(), key, string(value))
+	return err
+}
+
+func (n nodeEtcdRepo) GetDesiredOsImage(nodeId domain.NodeId) (*domain.DesiredOsImage, error) {
+	resp, err := n.etcd.Get(context.TODO(), desiredOsKey(nodeId))
+	if err != nil {
+		return nil, err
+	}
+	if resp.Count == 0 {
+		return nil, nil
+	}
+	image := &domain.DesiredOsImage{}
+	if err := json.Unmarshal(resp.Kvs[0].Value, image); err != nil {
+		return nil, err
+	}
+	return image, nil
+}
+
+func (n nodeEtcdRepo) withDesiredOs(node *domain.Node) (*domain.Node, error) {
+	image, err := n.GetDesiredOsImage(node.Id)
+	if err != nil {
+		return nil, err
+	}
+	node.DesiredOsImage = image
+	return node, nil
+}
+
+func (n nodeEtcdRepo) allDesiredOs() (map[string]*domain.DesiredOsImage, error) {
+	resp, err := n.etcd.Get(context.TODO(), desiredOsKeyPrefix+"/", etcd.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	images := make(map[string]*domain.DesiredOsImage, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		image := &domain.DesiredOsImage{}
+		if err := json.Unmarshal(kv.Value, image); err != nil {
+			return nil, err
+		}
+		images[strings.TrimPrefix(string(kv.Key), desiredOsKeyPrefix+"/")] = image
+	}
+	return images, nil
+}
+
+func desiredOsKey(nodeId domain.NodeId) string {
+	return fmt.Sprintf("%s/%s", desiredOsKeyPrefix, nodeId.Value)
 }
 
 func (n nodeEtcdRepo) PutLabel(node domain.Node, label domain.Label) (*domain.Node, error) {
@@ -315,8 +390,9 @@ func (n nodeEtcdRepo) selectNodes(selector domain.Selector, keyPrefix string) ([
 }
 
 const (
-	getKeyPrefix   = "nodes"
-	queryKeyPrefix = "labels"
+	getKeyPrefix       = "nodes"
+	queryKeyPrefix     = "labels"
+	desiredOsKeyPrefix = "desired_os"
 )
 
 func getKey(node domain.Node) string {

@@ -82,12 +82,13 @@ func NodeStringifiedFromDomain(node domain.Node) (*api.NodeStringified, error) {
 	}
 	osStatus := OsStatusFromDomain(node.OsStatus)
 	return &api.NodeStringified{
-		Id:           node.Id.Value,
-		Org:          node.Org,
-		Labels:       labels,
-		Resources:    node.Resources,
-		Capabilities: node.Capabilities,
-		OsStatus:     osStatus,
+		Id:             node.Id.Value,
+		Org:            node.Org,
+		Labels:         labels,
+		Resources:      node.Resources,
+		Capabilities:   node.Capabilities,
+		OsStatus:       osStatus,
+		DesiredOsImage: DesiredOsImageFromDomain(node.DesiredOsImage),
 	}, nil
 }
 
