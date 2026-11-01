@@ -75,6 +75,14 @@ func (r RegistrationReqBuilder) SetOsStatus(osStatus *OsStatus) RegistrationReqB
 	return r
 }
 
+// SetNodeId re-asserts the node's persisted id on re-registration, so
+// Magnetar updates (or recreates) the same record instead of minting a new
+// UUID. Leave unset for a brand-new node.
+func (r RegistrationReqBuilder) SetNodeId(nodeId string) RegistrationReqBuilder {
+	r.req.NodeId = nodeId
+	return r
+}
+
 func (r RegistrationReqBuilder) addLabel(key string, valueType Value_ValueTYpe, valueMarshalled []byte) RegistrationReqBuilder {
 	label := &Label{
 		Key: key,

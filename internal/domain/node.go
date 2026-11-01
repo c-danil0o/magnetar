@@ -17,6 +17,10 @@ type Node struct {
 	DesiredOsImage *DesiredOsImage
 	DesiredVms     []DesiredVm
 	VmStatus       []VmStatus
+	// LastSeen (unix seconds) and Liveness are a read-time view joined from
+	// the last_seen key; they are never persisted on the node record.
+	LastSeen int64
+	Liveness string
 }
 
 func (n Node) Claimed() bool {
@@ -40,6 +44,10 @@ type NodeRepo interface {
 	Get(nodeId NodeId, org string) (*Node, error)
 	FindById(nodeId NodeId) (*Node, error)
 	Delete(node Node) error
+	// DeleteNode removes a node completely: record, label index, liveness
+	// state and desired OS intent. Delete (above) only moves the record
+	// between pool and org namespaces (claim), so it keeps liveness and intent.
+	DeleteNode(node Node) error
 	ListNodePool() ([]Node, error)
 	ListOrgOwnedNodes(org string) ([]Node, error)
 	QueryNodePool(query Query) ([]Node, error)
@@ -49,6 +57,11 @@ type NodeRepo interface {
 	ListAllNodes() ([]Node, error)
 	PutDesiredOsImage(nodeId NodeId, image *DesiredOsImage) error
 	GetDesiredOsImage(nodeId NodeId) (*DesiredOsImage, error)
+	// TouchSeen records liveness (unix seconds); ListSeen returns every known
+	// node's last-seen time, for the liveness view and the GC.
+	TouchSeen(nodeId NodeId, at int64) error
+	DeleteSeen(nodeId NodeId) error
+	ListSeen() (map[string]int64, error)
 }
 
 type NodeMarshaller interface {

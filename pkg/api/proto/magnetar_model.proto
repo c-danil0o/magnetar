@@ -102,6 +102,12 @@ message NodeStringified {
   repeated string capabilities = 5;
   OsStatus osStatus = 6;
   DesiredOsImage desiredOsImage = 7;
+  // Liveness view, filled on read and never stored on the node record:
+  // lastSeen is unix seconds of the last heartbeat/update (0 = never seen,
+  // e.g. a record from before heartbeats existed); liveness is
+  // online | stale | offline | unknown, computed from lastSeen.
+  int64 lastSeen = 8;
+  string liveness = 9;
 }
 
 message LabelStringified {

@@ -1,6 +1,9 @@
 package domain
 
 type RegistrationReq struct {
+	// NodeId, when set, is the id the agent already had: Magnetar updates or
+	// recreates that record instead of minting a new UUID. Empty = new node.
+	NodeId       string
 	Labels       []Label
 	Resources    map[string]float64
 	BindAddress  string
@@ -20,4 +23,12 @@ type NodeUpdateReq struct {
 
 type NodeUpdateResp struct {
 	NotFound bool
+}
+
+type NodeHeartbeatReq struct {
+	NodeId NodeId
+}
+
+type NodeHeartbeatResp struct {
+	Found bool
 }

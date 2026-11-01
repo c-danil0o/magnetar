@@ -313,3 +313,23 @@ func (m *MagnetarGrpcServer) SetDesiredOsImage(ctx context.Context, req *api.Des
 	}
 	return &api.DesiredOsImageSetResp{}, nil
 }
+
+// DeleteNode removes a node record completely (record, label index, liveness
+// state, desired OS intent). Org-owned nodes are never removed automatically:
+// this is the explicit operator path for them.
+func (m *MagnetarGrpcServer) DeleteNode(ctx context.Context, req *api.DeleteNodeReq) (*api.DeleteNodeResp, error) {
+	if req.NodeId == "" {
+		return nil, status.Error(codes.InvalidArgument, "nodeId is required")
+	}
+	if err := m.authorizeHost(ctx, "node.delete", req.NodeId); err != nil {
+		return nil, err
+	}
+	err := m.nodeService.DeleteNode(domain.NodeId{Value: req.NodeId})
+	if errors.Is(err, domain.ErrNodeNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &api.DeleteNodeResp{}, nil
+}

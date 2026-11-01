@@ -89,6 +89,8 @@ func NodeStringifiedFromDomain(node domain.Node) (*api.NodeStringified, error) {
 		Capabilities:   node.Capabilities,
 		OsStatus:       osStatus,
 		DesiredOsImage: DesiredOsImageFromDomain(node.DesiredOsImage),
+		LastSeen:       node.LastSeen,
+		Liveness:       node.Liveness,
 	}, nil
 }
 

@@ -39,6 +39,7 @@ type MagnetarClient interface {
 	GetVmStatuses(ctx context.Context, in *VmStatusGetReq, opts ...grpc.CallOption) (*VmStatusGetResp, error)
 	SetVmStatuses(ctx context.Context, in *VmStatusSetReq, opts ...grpc.CallOption) (*VmStatusSetResp, error)
 	SetDesiredOsImage(ctx context.Context, in *DesiredOsImageSetReq, opts ...grpc.CallOption) (*DesiredOsImageSetResp, error)
+	DeleteNode(ctx context.Context, in *DeleteNodeReq, opts ...grpc.CallOption) (*DeleteNodeResp, error)
 }
 
 type magnetarClient struct {
@@ -202,6 +203,15 @@ func (c *magnetarClient) SetDesiredOsImage(ctx context.Context, in *DesiredOsIma
 	return out, nil
 }
 
+func (c *magnetarClient) DeleteNode(ctx context.Context, in *DeleteNodeReq, opts ...grpc.CallOption) (*DeleteNodeResp, error) {
+	out := new(DeleteNodeResp)
+	err := c.cc.Invoke(ctx, "/proto.Magnetar/DeleteNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MagnetarServer is the server API for Magnetar service.
 // All implementations must embed UnimplementedMagnetarServer
 // for forward compatibility
@@ -223,6 +233,7 @@ type MagnetarServer interface {
 	GetVmStatuses(context.Context, *VmStatusGetReq) (*VmStatusGetResp, error)
 	SetVmStatuses(context.Context, *VmStatusSetReq) (*VmStatusSetResp, error)
 	SetDesiredOsImage(context.Context, *DesiredOsImageSetReq) (*DesiredOsImageSetResp, error)
+	DeleteNode(context.Context, *DeleteNodeReq) (*DeleteNodeResp, error)
 	mustEmbedUnimplementedMagnetarServer()
 }
 
@@ -280,6 +291,9 @@ func (UnimplementedMagnetarServer) SetVmStatuses(context.Context, *VmStatusSetRe
 }
 func (UnimplementedMagnetarServer) SetDesiredOsImage(context.Context, *DesiredOsImageSetReq) (*DesiredOsImageSetResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetDesiredOsImage not implemented")
+}
+func (UnimplementedMagnetarServer) DeleteNode(context.Context, *DeleteNodeReq) (*DeleteNodeResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteNode not implemented")
 }
 func (UnimplementedMagnetarServer) mustEmbedUnimplementedMagnetarServer() {}
 
@@ -600,6 +614,24 @@ func _Magnetar_SetDesiredOsImage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Magnetar_DeleteNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNodeReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MagnetarServer).DeleteNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Magnetar/DeleteNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MagnetarServer).DeleteNode(ctx, req.(*DeleteNodeReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Magnetar_ServiceDesc is the grpc.ServiceDesc for Magnetar service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -674,6 +706,10 @@ var Magnetar_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetDesiredOsImage",
 			Handler:    _Magnetar_SetDesiredOsImage_Handler,
+		},
+		{
+			MethodName: "DeleteNode",
+			Handler:    _Magnetar_DeleteNode_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

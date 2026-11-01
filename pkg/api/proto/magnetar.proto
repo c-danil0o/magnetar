@@ -23,6 +23,7 @@ service Magnetar {
   rpc GetVmStatuses(VmStatusGetReq) returns (VmStatusGetResp) {}
   rpc SetVmStatuses(VmStatusSetReq) returns (VmStatusSetResp) {}
   rpc SetDesiredOsImage(DesiredOsImageSetReq) returns (DesiredOsImageSetResp) {}
+  rpc DeleteNode(DeleteNodeReq) returns (DeleteNodeResp) {}
 }
 
 message GetFromNodePoolReq {
@@ -169,6 +170,17 @@ message DesiredOsImageSetReq {
 }
 
 message DesiredOsImageSetResp {}
+
+// DeleteNode removes a node record completely: the record itself, its label
+// index entries, its liveness state and its desired OS intent. Org-owned
+// nodes are never removed automatically (GC only reaps pool records); this
+// RPC is the explicit operator path for them. VMs declared on a deleted host
+// keep running — their own node records are separate.
+message DeleteNodeReq {
+  string nodeId = 1;
+}
+
+message DeleteNodeResp {}
 
 // Node pull over NATS (magnetar.os.desired.get).
 message DesiredOsImageGetReq {

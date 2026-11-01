@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"log"
+	"time"
 
 	"github.com/c12s/magnetar/internal/domain"
 )
@@ -38,5 +39,29 @@ func (s *NodeUpdateService) Update(req domain.NodeUpdateReq) (*domain.NodeUpdate
 	if err != nil {
 		return nil, err
 	}
+	s.touch(node.Id)
 	return &domain.NodeUpdateResp{}, nil
+}
+
+// Heartbeat records liveness and reports whether Magnetar still knows the
+// node. It never rewrites the node record, so it cannot race (or clobber)
+// capability reports, OS-status ticks or label writes.
+func (s *NodeUpdateService) Heartbeat(req domain.NodeHeartbeatReq) (*domain.NodeHeartbeatResp, error) {
+	_, err := s.nodeRepo.FindById(req.NodeId)
+	if errors.Is(err, domain.ErrNodeNotFound) {
+		return &domain.NodeHeartbeatResp{Found: false}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := s.nodeRepo.TouchSeen(req.NodeId, time.Now().Unix()); err != nil {
+		return nil, err
+	}
+	return &domain.NodeHeartbeatResp{Found: true}, nil
+}
+
+func (s *NodeUpdateService) touch(id domain.NodeId) {
+	if err := s.nodeRepo.TouchSeen(id, time.Now().Unix()); err != nil {
+		log.Printf("node update: could not record liveness for %s: %v", id.Value, err)
+	}
 }
