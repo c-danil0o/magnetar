@@ -22,6 +22,10 @@ message OsStatus {
   string bootedVersion = 3;
   string phase = 4;
   OsAttempt lastAttempt = 5;
+  // the other deployment on disk (bootc's rollback entry); target of
+  // `image rollback`. After a greenboot rollback it is the rejected image.
+  string rollbackImage = 6;
+  string rollbackDigest = 7;
 }
 
 message OsAttempt {

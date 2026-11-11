@@ -135,10 +135,12 @@ func OsStatusFromDomain(status *domain.OsStatus) *api.OsStatus {
 		return nil
 	}
 	resp := &api.OsStatus{
-		BootedImage:   status.BootedImage,
-		BootedDigest:  status.BootedDigest,
-		BootedVersion: status.BootedVersion,
-		Phase:         status.Phase,
+		BootedImage:    status.BootedImage,
+		BootedDigest:   status.BootedDigest,
+		BootedVersion:  status.BootedVersion,
+		Phase:          status.Phase,
+		RollbackImage:  status.RollbackImage,
+		RollbackDigest: status.RollbackDigest,
 	}
 	if status.LastAttempt != nil {
 		resp.LastAttempt = &api.OsAttempt{
@@ -229,10 +231,12 @@ func OsStatusToDomain(status *api.OsStatus) *domain.OsStatus {
 		return nil
 	}
 	resp := &domain.OsStatus{
-		BootedImage:   status.BootedImage,
-		BootedDigest:  status.BootedDigest,
-		BootedVersion: status.BootedVersion,
-		Phase:         status.Phase,
+		BootedImage:    status.BootedImage,
+		BootedDigest:   status.BootedDigest,
+		BootedVersion:  status.BootedVersion,
+		Phase:          status.Phase,
+		RollbackImage:  status.RollbackImage,
+		RollbackDigest: status.RollbackDigest,
 	}
 	if status.LastAttempt != nil {
 		resp.LastAttempt = &domain.OsAttempt{

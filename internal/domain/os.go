@@ -6,6 +6,9 @@ type OsStatus struct {
 	BootedVersion string
 	Phase         string
 	LastAttempt   *OsAttempt
+	// the other deployment on disk (bootc rollback entry)
+	RollbackImage  string
+	RollbackDigest string
 }
 
 type OsAttempt struct {
