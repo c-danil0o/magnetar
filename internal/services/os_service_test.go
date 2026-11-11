@@ -10,6 +10,7 @@ import (
 type fakeNodeRepo struct {
 	domain.NodeRepo
 	nodes   map[string]bool
+	orgs    map[string]string
 	desired map[string]*domain.DesiredOsImage
 }
 
@@ -17,7 +18,7 @@ func (f *fakeNodeRepo) FindById(id domain.NodeId) (*domain.Node, error) {
 	if !f.nodes[id.Value] {
 		return nil, domain.ErrNodeNotFound
 	}
-	return &domain.Node{Id: id, DesiredOsImage: f.desired[id.Value]}, nil
+	return &domain.Node{Id: id, Org: f.orgs[id.Value], DesiredOsImage: f.desired[id.Value]}, nil
 }
 
 func (f *fakeNodeRepo) PutDesiredOsImage(id domain.NodeId, image *domain.DesiredOsImage) error {

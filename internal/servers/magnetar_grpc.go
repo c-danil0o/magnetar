@@ -296,13 +296,18 @@ func GetAuthInterceptor() func(ctx context.Context, req interface{}, info *grpc.
 }
 
 // SetDesiredOsImage records the operator's OS intent for a node (called by
-// gravity before it notifies the node). Same permission as the update itself.
+// gravity before it notifies the node). Same permission as the update itself:
+// os.update on the node or on its org.
 func (m *MagnetarGrpcServer) SetDesiredOsImage(ctx context.Context, req *api.DesiredOsImageSetReq) (*api.DesiredOsImageSetResp, error) {
 	if req.NodeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "nodeId is required")
 	}
-	if err := m.authorizeHost(ctx, "os.update", req.NodeId); err != nil {
-		return nil, err
+	// a per-node grant, or a grant on the node's org (review R21)
+	switch err := m.osService.AuthorizeOsUpdate(ctx, m.authorizer, domain.NodeId{Value: req.NodeId}); {
+	case errors.Is(err, domain.ErrNodeNotFound):
+		return nil, status.Error(codes.NotFound, err.Error())
+	case err != nil:
+		return nil, status.Error(codes.PermissionDenied, domain.ErrForbidden.Error())
 	}
 	err := m.osService.SetDesiredOsImage(domain.NodeId{Value: req.NodeId}, proto.DesiredOsImageToDomain(req.Image))
 	if errors.Is(err, domain.ErrNodeNotFound) {
