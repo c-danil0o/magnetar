@@ -23,11 +23,15 @@ is NATS.
 | `nodes/orgs/<org>/<node-id>` | owned node record |
 | `labels/pool/...`, `labels/orgs/...` | label index entries for queries |
 | `desired_os/<node-id>` | operator's declared OS image (separate key on purpose: status ticks rewrite the node record every ~30 s and would race with operator writes) |
+| `last_seen/<node-id>` | time of the node's last heartbeat (liveness) |
 
 The node record carries identity, labels, `capabilities`
 (`config|gossip|os_update|run_vms`), `os_status`
-(`healthy|switching|degraded|rolled_back` + booted/attempted digests),
-`desired_vms` and `vm_status`.
+(`healthy|switching|degraded|rolled_back|unmanaged` + booted/attempted
+digests + bootc's rollback deployment, which `cockpit image rollback`
+declares), `desired_vms` and `vm_status`. Reads add liveness
+(`online` ≤ `NODE_STALE_AFTER`, `stale`, `offline` > `NODE_OFFLINE_AFTER`)
+from `last_seen`.
 
 ## gRPC API (`pkg/api/proto/magnetar.proto`, reflection enabled)
 
@@ -38,7 +42,8 @@ The node record carries identity, labels, `capabilities`
 | Ownership | `ClaimOwnership` | `node.put` on the org |
 | Labels | `PutBoolLabel`, `PutFloat64Label`, `PutStringLabel`, `DeleteLabel` | `node.label.put/delete` on the node |
 | VMs | `SetDesiredVms`, `GetDesiredVms`, `SetVmStatuses`, `GetVmStatuses` | `node.put` / `node.get` on the **host** node |
-| OS intent | `SetDesiredOsImage` (write) | `os.update` on the node |
+| OS intent | `SetDesiredOsImage` (write) | `os.update` on the node, or on the org that owns it (`os.update\|org\|<org>`) |
+| Removal | `DeleteNode` | `node.delete` on the node |
 
 Caller identity travels as `authz-token` metadata; the interceptor copies it
 into the context and `AuthZService` checks the JWT's `permissions` claim
@@ -49,6 +54,7 @@ into the context and `AuthZService` checks the JWT's `permissions` claim
 | Subject | Kind | Purpose |
 |---|---|---|
 | `magnetar.registration` | queue `magnetar`, req/reply | enroll a node (returns UUID) |
+| `magnetar.node.heartbeat` | req/reply | liveness (writes `last_seen`); reply `found=false` makes star re-register with the same id |
 | `magnetar.node.update` | req/reply | capabilities + OS status sync; reply carries `notFound` (field 2) so star re-registers only on an explicit answer |
 | `magnetar.os.desired.get` | req/reply | a node pulls its declared OS image (`notFound` when unknown) |
 | `magnetar.vms.desired.get` | req/reply | a host pulls its desired VM set |
@@ -78,6 +84,8 @@ loop continues, so a claim can end partially applied.
 | `MERIDIAN_ADDRESS` | namespace/quota service |
 | `GRAVITY_ADDRESS` | agent queue (cluster join) |
 | `SECRET_KEY` | JWT key used to validate `authz-token` permissions |
+| `NODE_STALE_AFTER` / `NODE_OFFLINE_AFTER` | liveness thresholds (default `90s` / `5m`) |
+| `NODE_GC_ENABLED` / `NODE_GC_INTERVAL` / `NODE_GC_POOL_AFTER` | stale-record GC (default on / `10m` / `24h`): deletes only **pool** records without a heartbeat for `POOL_AFTER`; org nodes go only through `DeleteNode` |
 
 ## Build, test, run
 
@@ -88,7 +96,7 @@ go run ./cmd         # requires NATS + etcd; claim also needs oort/meridian/grav
 ```
 
 In compose (`tools/docker-compose.yml`) it runs as the `magnetar` container
-with those seven variables from `tools/.env`. Ports are defined per
+with the variables above from `tools/.env`. Ports are defined per
 environment (`MAGNETAR_HOSTNAME`/`MAGNETAR_PORT`).
 
 ## Status
@@ -106,7 +114,6 @@ robustness gaps below are known and accepted for the lab.
 | `internal/repos/node_etcd.go` | Node record and label index are written in separate etcd operations with no transaction/rollback: a failure between them desynchronizes the index (queries miss the node) (review: high). |
 | `internal/services/nodes.go` — `ClaimOwnership` | Best-effort, not atomic: per-node delete/put and Oort/Meridian/Gravity side effects are logged and skipped on failure → partially claimed orgs (review: high). |
 | `internal/servers/magnetar_grpc.go` | gRPC errors are mapped to status codes with `strings.Contains(err.Error(), "not found")` instead of the existing `domain.ErrNodeNotFound` type (review R12, low). |
-| No liveness/lease for registrations | Nodes that died or were wiped stay in the registry forever; after a CP reset, nodes re-register (new ids) before their host removes the old records, leaving dead pool entries until `setup-fleet` claims them (documented, low). |
 
 ### Disabled / unfinished features
 
@@ -114,7 +121,8 @@ robustness gaps below are known and accepted for the lab.
   `ListAllNodes`, `QueryNodePool`): any caller that can reach the gRPC
   endpoint sees every pool node. By design for the enrollment flow, but it
   also means the pool listing is not org-scoped (review notes it as a gap).
-- **Node liveness/cleanup job** does not exist (no TTL/lease, see above).
+- **Org-owned dead nodes** are never removed automatically (GC touches only
+  the pool); remove them with `cockpit delete node`.
 - The Oort evaluator client is wired but not used for effective
   authorization decisions beyond the JWT permission strings.
 
