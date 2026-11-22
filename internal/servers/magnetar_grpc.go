@@ -302,7 +302,7 @@ func (m *MagnetarGrpcServer) SetDesiredOsImage(ctx context.Context, req *api.Des
 	if req.NodeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "nodeId is required")
 	}
-	// a per-node grant, or a grant on the node's org (review R21)
+	// a per-node grant, or a grant on the node's org
 	switch err := m.osService.AuthorizeOsUpdate(ctx, m.authorizer, domain.NodeId{Value: req.NodeId}); {
 	case errors.Is(err, domain.ErrNodeNotFound):
 		return nil, status.Error(codes.NotFound, err.Error())

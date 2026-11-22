@@ -403,7 +403,7 @@ func (x *ListAllNodesResp) GetNodes() []*NodeStringified {
 	return nil
 }
 
-// VM management (Phase 4): desired VMs are a standing declaration on the host
+// VM management: desired VMs are a standing declaration on the host
 // node record (phase-next.md §2.3 Q1). The CP writes them (gateway/cockpit),
 // the host's Star polls them over NATS and reports observed status back.
 type VmDesiredGetReq struct {
