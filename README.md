@@ -78,7 +78,7 @@ loop continues, so a claim can end partially applied.
 | Variable | Purpose |
 |---|---|
 | `NATS_ADDRESS` | NATS server (host:port) |
-| `ETCD_ADDRESS` | etcd (plaintext in the lab) |
+| `ETCD_ADDRESS` | etcd address (plaintext) |
 | `MAGNETAR_ADDRESS` | gRPC listen address |
 | `OORT_ADDRESS` | policy/authorization service |
 | `MERIDIAN_ADDRESS` | namespace/quota service |
@@ -98,42 +98,3 @@ go run ./cmd         # requires NATS + etcd; claim also needs oort/meridian/grav
 In compose (`tools/docker-compose.yml`) it runs as the `magnetar` container
 with the variables above from `tools/.env`. Ports are defined per
 environment (`MAGNETAR_HOSTNAME`/`MAGNETAR_PORT`).
-
-## Status
-
-Stable — the node registry and the declarative stores (desired OS image,
-desired VMs) that every other component leans on are etcd-backed; the
-robustness gaps below are known and accepted for the lab.
-
-## Bugs, disabled and unfinished features
-
-### Confirmed bugs
-
-| Where | Effect |
-|---|---|
-| `internal/repos/node_etcd.go` | Node record and label index are written in separate etcd operations with no transaction/rollback: a failure between them desynchronizes the index (queries miss the node) (review: high). |
-| `internal/services/nodes.go` — `ClaimOwnership` | Best-effort, not atomic: per-node delete/put and Oort/Meridian/Gravity side effects are logged and skipped on failure → partially claimed orgs (review: high). |
-| `internal/servers/magnetar_grpc.go` | gRPC errors are mapped to status codes with `strings.Contains(err.Error(), "not found")` instead of the existing `domain.ErrNodeNotFound` type (review R12, low). |
-
-### Disabled / unfinished features
-
-- **Pool reads are unauthenticated** (`GetFromNodePool`, `ListNodePool`,
-  `ListAllNodes`, `QueryNodePool`): any caller that can reach the gRPC
-  endpoint sees every pool node. By design for the enrollment flow, but it
-  also means the pool listing is not org-scoped (review notes it as a gap).
-- **Org-owned dead nodes** are never removed automatically (GC touches only
-  the pool); remove them with `cockpit delete node`.
-- The Oort evaluator client is wired but not used for effective
-  authorization decisions beyond the JWT permission strings.
-
-### PoC boundaries (by design, not bugs)
-
-- Lab transport is plaintext: NATS unauthenticated (review S1), etcd
-  plaintext, gRPC insecure.
-- Registration has no attestation: any NATS client can enroll a node
-  (review S7; flightctl-style CSR approval is the production answer).
-- `NodeUpdateReq` semantics: nil field = unchanged (a status tick must not
-  clobber capabilities — that bug is documented as DEV-10).
-
-Design details and review findings: `../plan/architecture.md`,
-`../plan/review.md`, `../plan/deviations.md` (DEV-10, DEV-13, DEV-14).
